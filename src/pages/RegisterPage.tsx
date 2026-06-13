@@ -15,7 +15,7 @@ export function RegisterPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { initialize } = useAuthStore();
+  const { initialize, createProfile } = useAuthStore();
   const { addToast } = useUIStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -53,7 +53,14 @@ export function RegisterPage() {
       }
 
       if (data.user) {
+        console.log('[Register] User created:', data.user.id);
+
+        // Create profile record as backup (auth state handler will also try)
+        await createProfile(data.user.id, email, name);
+
+        // Initialize auth state
         await initialize();
+
         addToast({
           type: 'success',
           title: 'Account created!',
@@ -61,7 +68,8 @@ export function RegisterPage() {
         });
         navigate('/dashboard');
       }
-    } catch {
+    } catch (err) {
+      console.error('[Register] Error:', err);
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
