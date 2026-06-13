@@ -5,6 +5,7 @@ export { JoinSessionPage } from './JoinSessionPage';
 export { DashboardPage } from './DashboardPage';
 export { SessionsPage } from './SessionsPage';
 export { SessionPage } from './SessionPage';
+export { SessionDetailPage } from './SessionDetailPage';
 export { HistoryPage } from './HistoryPage';
 export { RecordingsPage } from './RecordingsPage';
 export { AdminAnalyticsPage } from './AdminAnalyticsPage';

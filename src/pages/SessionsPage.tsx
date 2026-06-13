@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Plus, Search, Filter, Video } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Plus, Search, Video, Copy, ExternalLink, Check, Share2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { Card, CardContent, Button, Badge, Input, Modal } from '@/components/ui';
 import { useAuthStore, useUIStore } from '@/stores';
@@ -11,11 +11,14 @@ import { formatDate, formatDuration } from '@/lib/utils';
 export function SessionsPage() {
   const { user } = useAuthStore();
   const { addToast } = useUIStore();
+  const navigate = useNavigate();
   const [sessions, setSessions] = useState<Session[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showNewModal, setShowNewModal] = useState(false);
+  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 
   useEffect(() => {
     fetchSessions();
@@ -71,13 +74,28 @@ export function SessionsPage() {
         });
         fetchSessions();
       }
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         title: 'Error',
         message: 'Failed to end session.',
       });
     }
+  };
+
+  const handleCopyInviteLink = (session: Session) => {
+    const inviteUrl = `${window.location.origin}/join/${session.invite_token}`;
+    navigator.clipboard.writeText(inviteUrl);
+    addToast({
+      type: 'success',
+      title: 'Link Copied',
+      message: 'Invite link copied to clipboard.',
+    });
+  };
+
+  const handleShowInvite = (session: Session) => {
+    setSelectedSession(session);
+    setShowInviteModal(true);
   };
 
   const getStatusBadge = (status: string) => {
@@ -201,11 +219,14 @@ export function SessionsPage() {
                             <Link to={`/session/${session.id}`}>
                               <Button size="sm">Start</Button>
                             </Link>
-                            <Link to={`/session/${session.id}/invite`}>
-                              <Button variant="outline" size="sm">
-                                Share Link
-                              </Button>
-                            </Link>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              leftIcon={<Share2 className="w-4 h-4" />}
+                              onClick={() => handleShowInvite(session)}
+                            >
+                              Share
+                            </Button>
                           </>
                         )}
                         {session.status === 'ended' && (
@@ -228,10 +249,18 @@ export function SessionsPage() {
       <NewSessionModal
         isOpen={showNewModal}
         onClose={() => setShowNewModal(false)}
-        onCreated={() => {
+        onCreated={(session) => {
           setShowNewModal(false);
+          setSelectedSession(session);
+          setShowInviteModal(true);
           fetchSessions();
         }}
+      />
+
+      <InviteModal
+        isOpen={showInviteModal}
+        onClose={() => setShowInviteModal(false)}
+        session={selectedSession}
       />
     </div>
   );
@@ -244,7 +273,7 @@ function NewSessionModal({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreated: () => void;
+  onCreated: (session: Session) => void;
 }) {
   const { user } = useAuthStore();
   const { addToast } = useUIStore();
@@ -274,9 +303,11 @@ function NewSessionModal({
           title: 'Session Created',
           message: 'Share the invite link with your customer.',
         });
-        onCreated();
+        onCreated(data as Session);
+        setTitle('');
+        setDescription('');
       }
-    } catch (error) {
+    } catch {
       addToast({
         type: 'error',
         title: 'Error',
@@ -316,6 +347,97 @@ function NewSessionModal({
             Create Session
           </Button>
         </div>
+      </div>
+    </Modal>
+  );
+}
+
+function InviteModal({
+  isOpen,
+  onClose,
+  session,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  session: Session | null;
+}) {
+  const navigate = useNavigate();
+  const { addToast } = useUIStore();
+  const [copied, setCopied] = useState(false);
+
+  if (!session) return null;
+
+  const inviteUrl = `${window.location.origin}/join/${session.invite_token}`;
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(inviteUrl);
+    setCopied(true);
+    addToast({
+      type: 'success',
+      title: 'Link Copied',
+      message: 'Invite link copied to clipboard.',
+    });
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleStartSession = async () => {
+    await supabase
+      .from('sessions')
+      .update({
+        status: 'active',
+        start_time: new Date().toISOString(),
+      })
+      .eq('id', session.id);
+
+    onClose();
+    navigate(`/session/${session.id}`);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title="Share Invite Link" size="md">
+      <div className="space-y-6">
+        <div className="p-4 rounded-xl bg-secondary-50 dark:bg-dark-800 border border-secondary-200 dark:border-dark-700">
+          <p className="text-sm text-secondary-500 dark:text-secondary-400 mb-2">
+            Share this link with your customer to join the session:
+          </p>
+          <div className="flex items-center gap-2">
+            <Input
+              value={inviteUrl}
+              readOnly
+              className="flex-1 font-mono text-sm"
+            />
+            <Button
+              variant={copied ? 'success' : 'outline'}
+              size="sm"
+              onClick={handleCopy}
+              leftIcon={copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+            >
+              {copied ? 'Copied' : 'Copy'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="flex gap-3">
+          <Button
+            variant="outline"
+            onClick={handleCopy}
+            leftIcon={<Copy className="w-4 h-4" />}
+            className="flex-1"
+          >
+            Copy Link
+          </Button>
+          <Button
+            onClick={handleStartSession}
+            leftIcon={<ExternalLink className="w-4 h-4" />}
+            className="flex-1"
+          >
+            Start Session
+          </Button>
+        </div>
+
+        <p className="text-xs text-center text-secondary-400 dark:text-secondary-500">
+          No account required for customers. They can join directly from their browser.
+        </p>
       </div>
     </Modal>
   );
