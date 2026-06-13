@@ -165,20 +165,10 @@ export const useAuthStore = create<AuthState>()(
                   avatar_url: profile.avatar_url,
                   created_at: profile.created_at,
                   updated_at: profile.updated_at,
-                } : createFallbackUser(authUser);
-
-                console.log('[Auth] User set:', user.email, '| Role:', user.role);
-                set({ session, profile, user });
-              } else if (event === 'TOKEN_REFRESHED') {
-                console.log('[Auth] Token refreshed');
-                set({ session });
-              }
+                } : null,
+              });
             }
-          );
-
-          // Keep subscription active; cleanup should be handled elsewhere if needed
-          // (do not return a cleanup function so initialize matches Promise<void>)
-          void subscription;
+          });
         } catch (error) {
           console.error('[Auth] Initialization error:', error);
         } finally {

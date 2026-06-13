@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Video, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react';
@@ -13,13 +13,15 @@ export function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const navigate = useNavigate();
-  const { initialize } = useAuthStore();
+  const { initialize, createProfile } = useAuthStore();
   const { addToast } = useUIStore();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setError('');
+
+    console.log('[Login] Attempting login for:', email);
 
     try {
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
@@ -28,20 +30,46 @@ export function LoginPage() {
       });
 
       if (signInError) {
+        console.error('[Login] Sign in error:', signInError);
         setError(signInError.message);
+        setIsLoading(false);
         return;
       }
 
+      console.log('[Login] Sign in successful:', data.user?.id);
+
       if (data.user) {
+        // Ensure profile exists
+        const { data: existingProfile } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (!existingProfile) {
+          console.log('[Login] Creating missing profile');
+          const metadata = data.user.user_metadata || {};
+          await createProfile(
+            data.user.id,
+            data.user.email || email,
+            metadata.name || metadata.full_name
+          );
+        }
+
+        // Initialize auth state
         await initialize();
+
         addToast({
           type: 'success',
           title: 'Welcome back!',
           message: 'You have successfully signed in.',
         });
-        navigate('/dashboard');
+
+        console.log('[Login] Navigating to dashboard');
+        navigate('/dashboard', { replace: true });
       }
-    } catch {
+    } catch (err) {
+      console.error('[Login] Exception:', err);
       setError('An unexpected error occurred');
     } finally {
       setIsLoading(false);
@@ -130,7 +158,7 @@ export function LoginPage() {
           </Card>
 
           <p className="mt-6 text-center text-sm text-secondary-600 dark:text-secondary-400">
-            Don{'  '}t have an account?{' '}
+            Don't have an account?{' '}
             <Link to="/register" className="text-primary-600 hover:text-primary-700 font-medium">
               Sign up
             </Link>
