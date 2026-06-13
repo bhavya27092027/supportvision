@@ -165,10 +165,21 @@ export const useAuthStore = create<AuthState>()(
                   avatar_url: profile.avatar_url,
                   created_at: profile.created_at,
                   updated_at: profile.updated_at,
-                } : null,
-              });
+                } : createFallbackUser(authUser);
+
+                console.log('[Auth] User set:', user.email, '| Role:', user.role);
+                set({ session, profile, user });
+              } else if (event === 'TOKEN_REFRESHED') {
+                console.log('[Auth] Token refreshed');
+                set({ session });
+              }
             }
-          });
+          );
+
+          // We do not return a cleanup callback here because initialize() is typed to return Promise<void>
+          if (subscription) {
+            // Optionally keep subscription alive for the lifetime of the store
+          }
         } catch (error) {
           console.error('[Auth] Initialization error:', error);
         } finally {
