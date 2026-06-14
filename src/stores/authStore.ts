@@ -189,13 +189,35 @@ export const useAuthStore = create<AuthState>()(
       },
 
       signOut: async () => {
-        console.log('[Auth] Signing out...');
-        const { error } = await supabase.auth.signOut();
-        if (error) {
+        try {
+          console.log('[Auth] Signing out...');
+
+          const { error } = await supabase.auth.signOut();
+
+          if (error) {
+            throw error;
+          }
+
+          localStorage.removeItem('auth-storage');
+
+          set({
+            user: null,
+            profile: null,
+            session: null,
+            isLoading: false,
+          });
+
+          console.log('[Auth] Signed out successfully');
+        } catch (error) {
           console.error('[Auth] Sign out error:', error);
+
+          set({
+            user: null,
+            profile: null,
+            session: null,
+            isLoading: false,
+          });
         }
-        set({ user: null, profile: null, session: null });
-        console.log('[Auth] Signed out');
       },
     }),
     {

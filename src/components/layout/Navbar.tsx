@@ -134,10 +134,12 @@ export function Navbar({ showMenu = true }: NavbarProps) {
               <DropdownItem
                 icon={<LogOut className="w-4 h-4" />}
                 variant="danger"
-                onClick={() => {
+                onClick={async () => {
                   setDropdownOpen(false);
-                  useAuthStore.getState().signOut();
-                  navigate('/login');
+
+                  await useAuthStore.getState().signOut();
+
+                  navigate('/login', { replace: true });
                 }}
               >
                 Sign Out

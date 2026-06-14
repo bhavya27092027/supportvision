@@ -107,7 +107,7 @@ export function DashboardPage() {
             Here{'  '}s an overview of your support sessions.
           </p>
         </div>
-        <Link to="/sessions/new">
+        <Link to="/sessions">
           <Button leftIcon={<Plus className="w-4 h-4" />}>
             New Session
           </Button>
